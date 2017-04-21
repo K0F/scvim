@@ -245,6 +245,8 @@ function! SClang_send()
     call SendToSC('')
     "redraw!
   endif
+  let currentline = line('.')
+  call FlashLine(currentline)
 endfunction
 
 function SClangStart()
@@ -335,7 +337,7 @@ function! SClang_block()
   let l:origcol = col(".")
   exe cmd
   call cursor(l:origline,l:origcol)
-  
+  call FlashRegion(blkstart[0], blkend[0])
   ""if the range is just one line
   "if blkstart[0] == blkend[0]
   " "XXX call SendToSC(strpart(getline(blkstart[0]),blkstart[1] - 1, (blkend[1] - blkstart[1] + 1)))
@@ -400,6 +402,48 @@ function SChelp(subject)
     exe "help SC:" . a:subject
   endif
 endfun
+
+
+
+" Compatibility
+highlight Evaluated term=reverse cterm=reverse guibg=Grey
+
+function FlashLine(line)
+  let pattern = '\%' . a:line . 'l'
+  call Flash(pattern)
+endfunction
+
+function FlashRegion(start, end)
+  let first = a:start - 1
+  let last  = a:end + 1
+  let pattern  = ''
+  let pattern .= '\%>' . first . 'l'
+  let pattern .= '\%<' . last . 'l'
+  let pattern .= '.'
+
+  call Flash(pattern)
+endfunction
+
+function Flash(pattern)
+  " Highlight the pattern (line or region) for 150ms if `scFlash` is enabled
+  if !exists('g:scFlash') | return | endif
+
+  call matchadd('Evaluated', a:pattern)
+  redraw
+
+  " timers were introduced in vim-8.0
+  if has('timers')
+    call timer_start(200, 'ClearFlash')
+  else
+    sleep 200m
+    call ClearFlash()
+  endif
+endfunction
+
+function ClearFlash(...)
+  call clearmatches()
+endfunction
+
 
 " search help files for word under the cursor
 " or open the HelpBrowser front page
